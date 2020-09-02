@@ -29,37 +29,35 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-const SerialPort = require('serialport');
-const Debug = require('debug');
-const AbstractBackend = require('./abstract-backend');
-const ErrorCodes = require('./util/errors');
-const { getBoardVersion } = require('./util/board-versions');
+import SerialPort from 'serialport';
+import Debug from 'debug';
+import AbstractBackend from './abstract-backend';
+import ErrorCodes from './util/errors';
+import { getBoardVersion } from './util/board-versions';
 
 const debug = Debug('device-lister:serialport');
 
-let hasShownDeprecatedPropertyWarning = false;
-const mayShowWarningAboutDeprecatedProperty = () => {
-    if (!hasShownDeprecatedPropertyWarning) {
-        console.warn('Using the property "comName" has been deprecated. You should now use "path". The property will be removed in the next major release.');
-    }
-    hasShownDeprecatedPropertyWarning = true;
-};
-const withDucktapedComName = port => ({
-    ...port,
-    get comName() {
-        mayShowWarningAboutDeprecatedProperty();
-        return port.path;
-    },
-});
 
-class SerialPortBackend extends AbstractBackend {
+function getSerialPorts() {
+    return new Promise((resolve, reject) => {
+        SerialPort.list((err, ports) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(ports);
+            }
+        });
+    });
+}
+
+export default class SerialPortBackend extends AbstractBackend {
     /* Returns a Promise to a list of objects, like:
      *
      * [{
      *   traits: 'serialport'
      *   serialNumber: '1234',
      *   serialport: {
-     *      path: 'COM3',
+     *      comName: 'COM3',
      *      manufacturer: 'Arduino LLC (www.arduino.cc)',
      *      serialNumber: '752303138333518011C1',
      *      pnpId: 'USB\\VID_2341&PID_0043\\752303138333518011C1',
@@ -81,24 +79,24 @@ class SerialPortBackend extends AbstractBackend {
     /* eslint-disable-next-line class-methods-use-this */
     reenumerate() {
         debug('Reenumerating...');
-        return SerialPort.list()
+        return getSerialPorts()
             .then(ports => (
                 ports.map(port => {
-                    debug('Enumerated:', port.path, port.serialNumber);
+                    debug('Enumerated:', port.comName, port.serialNumber);
                     if (port.serialNumber !== undefined) {
                         return {
                             serialNumber: port.serialNumber,
-                            serialport: withDucktapedComName(port),
+                            serialport: port,
                             boardVersion: getBoardVersion(port.serialNumber),
                             traits: ['serialport'],
                         };
                     }
-                    const err = new Error(`Could not fetch serial number for serial port at ${port.path}`);
-                    err.serialport = withDucktapedComName(port);
+                    const err = new Error(`Could not fetch serial number for serial port at ${port.comName}`);
+                    err.serialport = port;
                     err.errorCode = ErrorCodes.COULD_NOT_FETCH_SNO_FOR_PORT;
                     return {
                         error: err,
-                        errorSource: `serialport-${port.path}`,
+                        errorSource: `serialport-${port.comName}`,
                     };
                 })
             )).catch(error => {
@@ -110,5 +108,3 @@ class SerialPortBackend extends AbstractBackend {
             });
     }
 }
-
-module.exports = SerialPortBackend;

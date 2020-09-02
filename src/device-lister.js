@@ -29,22 +29,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-const EventEmitter = require('events');
-const Usb = require('usb');
-const Debug = require('debug');
-const UsbBackend = require('./usb-backend');
-const SerialPortBackend = require('./serialport-backend');
-const JlinkBackend = require('./jlink-backend');
-const ErrorCodes = require('./util/errors');
-const { getBoardVersion } = require('./util/board-versions');
+import EventEmitter from 'events';
+import Usb from 'usb';
+import Debug from 'debug';
+import UsbBackend from './usb-backend';
+import SerialPortBackend from './serialport-backend';
+import JlinkBackend from './jlink-backend';
+import ErrorCodes from './util/errors';
+import { getBoardVersion } from './util/board-versions';
 
 const debug = Debug('device-lister:conflater');
 
 const SEGGER_VENDOR_ID = 0x1366;
 const NORDIC_VENDOR_ID = 0x1915;
-const NORDIC_DEVICE_WITH_DFU_TRIGGER = 0xC00A;
 
-class DeviceLister extends EventEmitter {
+export default class DeviceLister extends EventEmitter {
     constructor(traits = {}) {
         super();
 
@@ -71,7 +70,6 @@ class DeviceLister extends EventEmitter {
         if (nordicUsb) {
             usbDeviceClosedFilters.nordicUsb = device => (
                 device.deviceDescriptor.idVendor === NORDIC_VENDOR_ID
-                && device.deviceDescriptor.idProduct === NORDIC_DEVICE_WITH_DFU_TRIGGER
             );
         }
         if (seggerUsb) {
@@ -80,18 +78,17 @@ class DeviceLister extends EventEmitter {
             );
         }
         if (nordicDfu) {
-            usbDeviceOpenFilters.nordicDfu = device => (
-                device.deviceDescriptor.idVendor === NORDIC_VENDOR_ID
-                && device.interfaces.some(iface => (
-                    iface.descriptor.bInterfaceClass === 255
-                    && iface.descriptor.bInterfaceSubClass === 1
-                    && iface.descriptor.bInterfaceProtocol === 1
-                ))
-            );
+            usbDeviceOpenFilters.nordicDfu = device =>
+                device.deviceDescriptor.idVendor === NORDIC_VENDOR_ID &&
+                device.interfaces.some(iface => (
+                    iface.descriptor.bInterfaceClass === 255 &&
+                    iface.descriptor.bInterfaceSubClass === 1 &&
+                    iface.descriptor.bInterfaceProtocol === 1
+                ));
         }
 
-        if (Object.keys(usbDeviceClosedFilters).length > 0
-            || Object.keys(usbDeviceOpenFilters).length > 0) {
+        if (Object.keys(usbDeviceClosedFilters).length > 0 ||
+            Object.keys(usbDeviceOpenFilters).length > 0) {
             this._backends.push(new UsbBackend(usbDeviceClosedFilters, usbDeviceOpenFilters));
         }
         if (serialport) { this._backends.push(new SerialPortBackend()); }
@@ -230,5 +227,3 @@ class DeviceLister extends EventEmitter {
 }
 DeviceLister.ErrorCodes = ErrorCodes;
 DeviceLister.getBoardVersion = getBoardVersion;
-
-module.exports = DeviceLister;

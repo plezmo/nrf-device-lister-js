@@ -29,9 +29,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-const ErrorCodes = require('./util/errors');
+import ErrorCodes from './util/errors';
 
-class AbstractBackend {
+export default class AbstractBackend {
     constructor() {
         if (this.constructor === AbstractBackend) {
             const err = new Error('Cannot instantiate AbstractBackend.');
@@ -80,5 +80,3 @@ class AbstractBackend {
         throw err;
     }
 }
-
-module.exports = AbstractBackend;

@@ -29,15 +29,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-const nrfjprogjs = require('pc-nrfjprog-js');
-const Debug = require('debug');
-const AbstractBackend = require('./abstract-backend');
-const ErrorCodes = require('./util/errors');
-const { getBoardVersion } = require('./util/board-versions');
+import nrfjprogjs from 'pc-nrfjprog-js';
+import Debug from 'debug';
+import AbstractBackend from './abstract-backend';
+import ErrorCodes from './util/errors';
+import { getBoardVersion } from './util/board-versions';
 
 const debug = Debug('device-lister:jlink');
 
-class JlinkBackend extends AbstractBackend {
+export default class JlinkBackend extends AbstractBackend {
     /* Returns a `Promise` to a list of objects, like:
      *
      * [{
@@ -60,19 +60,15 @@ class JlinkBackend extends AbstractBackend {
     reenumerate() {
         debug('Reenumerating...');
         return new Promise((res, rej) => {
-            // Due to slowness of jlink driver, jlink devices does not show up immediately
-            // after connecting. Set a timeout to wait for devices getting ready.
-            setTimeout(() => {
-                nrfjprogjs.getSerialNumbers((err, serialnumbers) => {
-                    if (err) {
-                        const error = err;
-                        error.errorCode = ErrorCodes.NO_SERIAL_FROM_PC_NRFJPROGJS;
-                        rej(error);
-                    } else {
-                        res(serialnumbers);
-                    }
-                });
-            }, 1000);
+            nrfjprogjs.getSerialNumbers((err, serialnumbers) => {
+                if (err) {
+                    const error = err;
+                    error.errorCode = ErrorCodes.NO_SERIAL_FROM_PC_NRFJPROGJS;
+                    rej(error);
+                } else {
+                    res(serialnumbers);
+                }
+            });
         }).then(serialnumbers => serialnumbers.map(serialnumber => {
             debug('Enumerated:', serialnumber);
             return {
@@ -94,5 +90,3 @@ class JlinkBackend extends AbstractBackend {
         });
     }
 }
-
-module.exports = JlinkBackend;

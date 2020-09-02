@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-const Debug = require('debug');
+import Debug from 'debug';
 
 const debug = Debug('device-lister:usb');
 
@@ -62,7 +62,7 @@ function getStringDescriptor(device, index) {
  * @param {Array<number>} indexes The indexes to get.
  * @returns {Promise} Promise that resolves with array of string descriptors.
  */
-function getStringDescriptors(device, indexes) {
+export function getStringDescriptors(device, indexes) {
     return indexes.reduce((prev, index) => (
         prev.then(descriptorValues => (
             getStringDescriptor(device, index)
@@ -77,18 +77,20 @@ function getStringDescriptors(device, indexes) {
  * @param {Object} device The usb device to open.
  * @returns {Promise} Promise that resolves if successful, rejects if failed.
  */
-function openDevice(device) {
+export function openDevice(device) {
     return new Promise((res, rej) => {
         const tryOpen = (retries = 0) => {
             try {
                 device.open();
                 res();
             } catch (error) {
-                if (retries < 5) {
-                    // For various reasons race-conditions need to be mitigated, e.g:
-                    //  - winUSB driver allows only one process to access the USB device
-                    //  - virtual machine or slow hardware
-                    debug(`Got LIBUSB_ERROR, retrying (attempt ${retries})...`);
+                if (process.platform === 'win32' &&
+                    retries < 5 &&
+                    error.message === 'LIBUSB_ERROR_ACCESS') {
+                    // In win platforms, the winUSB driver might allow only one
+                    // process to access the USB device, potentially creating
+                    // race conditions. Mitigate this with an auto-retry mechanism.
+                    debug(`Got LIBUSB_ERROR_ACCESS on win32, retrying (attempt ${retries})...`);
                     const delay = (50 * retries * retries) + (100 * Math.random());
                     setTimeout(() => tryOpen(retries + 1), delay);
                 } else {
@@ -106,7 +108,7 @@ function openDevice(device) {
  * @param {Number} number The number to prefix and pad.
  * @returns {string} Prefixed and padded number.
  */
-function hexpad4(number) {
+export function hexpad4(number) {
     return `0x${number.toString(16).padStart(4, '0')}`;
 }
 
@@ -117,15 +119,8 @@ function hexpad4(number) {
  * @param {Object} device The device to get an ID for.
  * @returns {string} String ID for the given device.
  */
-function getDeviceId(device) {
+export function getDeviceId(device) {
     const { busNumber, deviceAddress } = device;
     const { idVendor, idProduct } = device.deviceDescriptor;
     return `${busNumber}.${deviceAddress} ${hexpad4(idVendor)}/${hexpad4(idProduct)}`;
 }
-
-module.exports = {
-    getStringDescriptors,
-    openDevice,
-    hexpad4,
-    getDeviceId,
-};

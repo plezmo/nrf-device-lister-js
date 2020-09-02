@@ -37,8 +37,8 @@
 'use strict';
 
 const path = require('path');
-const nrfjprog = require('pc-nrfjprog-js');
 const DeviceLister = require('../dist/device-lister');
+const nrfjprog = require('pc-nrfjprog-js');
 
 const { getBoardVersion } = DeviceLister;
 
@@ -56,9 +56,7 @@ describe('The Device Lister Traits', () => {
         expect(Array.from(devices.values()).find(d => d.traits.includes('jlink'))).not.toBeUndefined();
     });
 
-    // skip this test, since nordicUsb devices are filtered out of
-    // usb backend due to Windows LIBUSB_ERROR
-    it.skip('shall list nordic usb devices', async () => {
+    it('shall list nordic usb devices', async () => {
         const devices = await new DeviceLister({
             nordicUsb: true,
         }).reenumerate();
@@ -116,10 +114,8 @@ describe('The Device Versions', () => {
         expect(getBoardVersion('68200000')).toBe('PCA10040');
         expect(getBoardVersion('68300000')).toBe('PCA10056');
         expect(getBoardVersion('68400000')).toBe('PCA10068');
-        expect(getBoardVersion('68500000')).toBe('PCA10100');
         expect(getBoardVersion('68600000')).toBe('PCA10064');
         expect(getBoardVersion('96000000')).toBe('PCA10090');
-        expect(getBoardVersion('96020000')).toBe('PCA10115');
 
         expect(getBoardVersion('12300000')).toBeUndefined();
     });
